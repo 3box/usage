@@ -1,5 +1,5 @@
 # usage
-Easy way to get cpu usage to C program Linux
+Easy way to get cpu usage to Linux C program
 
 ## How to use it
 
