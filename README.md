@@ -12,7 +12,7 @@ Easy way to get cpu usage to C program Linux
 
 ## Example:
 
-`
+```C
 #include "usage.def"
 
 int main(int argc, char** argv)
@@ -28,5 +28,5 @@ int main(int argc, char** argv)
 
   return 0;
 }
-`
+```
 
