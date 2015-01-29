@@ -1,0 +1,104 @@
+#include <limits.h>
+
+
+#include <sys/times.h>
+
+#ifndef HZ
+# include <sys/param.h>
+#endif
+#if !defined(HZ) && defined(CLOCKS_PER_SEC)
+# define HZ CLOCKS_PER_SEC
+#endif
+#if !defined(HZ) && defined(CLK_TCK)
+# define HZ CLK_TCK
+#endif
+#ifndef HZ
+# define HZ 60
+#endif
+
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#define TV_MSEC tv_usec / 1000
+
+/* Information on the resources used by a child process.  */
+typedef struct
+{
+  struct rusage ru;
+  struct timeval start, elapsed; /* Wallclock time of process.  */
+} RESUSE;
+
+void usage_start(RESUSE *resp);
+int  usage_end  (RESUSE *resp);
+void usage_summary(RESUSE *resp);
+
+void usage_start (RESUSE *resp)
+{
+  long value;
+
+  value = times (NULL);
+  resp->start.tv_sec = value / HZ;
+  resp->start.tv_usec = value % HZ * (1000000 / HZ);
+}
+
+int usage_end(RESUSE *resp)
+{
+  long value;
+
+  value = times(NULL);
+
+  //memset(&resp->ru, 0, sizeof(struct rusage));
+  //resp->ru.ru_utime.tv_sec = tms.tms_utime / HZ;
+  //resp->ru.ru_stime.tv_sec = tms.tms_stime / HZ;
+  //resp->ru.ru_utime.tv_usec = tms.tms_utime % HZ * (1000000 / HZ);
+  //resp->ru.ru_stime.tv_usec = tms.tms_stime % HZ * (1000000 / HZ);
+
+  getrusage(RUSAGE_SELF,&resp->ru);
+
+  resp->elapsed.tv_sec = value / HZ;
+  resp->elapsed.tv_usec = value % HZ * (1000000 / HZ);
+
+  resp->elapsed.tv_sec -= resp->start.tv_sec;
+  if (resp->elapsed.tv_usec < resp->start.tv_usec)
+  {
+    resp->elapsed.tv_usec += 1000000;
+    --resp->elapsed.tv_sec;
+  }
+  resp->elapsed.tv_usec -= resp->start.tv_usec;
+
+  return 1;
+}
+
+void usage_summary(RESUSE *resp)
+{
+  unsigned long r;
+  unsigned long v;
+
+  r = resp->elapsed.tv_sec * 1000 + resp->elapsed.tv_usec / 1000;
+  v = resp->ru.ru_utime.tv_sec * 1000 + resp->ru.ru_utime.TV_MSEC +
+    resp->ru.ru_stime.tv_sec * 1000 + resp->ru.ru_stime.TV_MSEC;
+
+  if (r > 0)
+    printf ("CPU %lu%%\n", (v * 100 / r));
+  else
+    printf ("CPU ?%%\n");
+
+  printf("TIME ");
+  if (resp->elapsed.tv_sec >= 3600) /* One hour -> h:m:s.  */
+  {
+    printf("%ld:%02ld:%02ld\n",
+        resp->elapsed.tv_sec / 3600,
+        (resp->elapsed.tv_sec % 3600) / 60,
+        resp->elapsed.tv_sec % 60);
+  }
+  else
+  {
+    printf("%ld:%02ld.%02ld\n", /* -> m:s.  */
+        resp->elapsed.tv_sec / 60,
+        resp->elapsed.tv_sec % 60,
+        resp->elapsed.tv_usec / 10000);
+  }
+
+  printf("MEM  %lu\n", resp->ru.ru_maxrss);
+}
+
